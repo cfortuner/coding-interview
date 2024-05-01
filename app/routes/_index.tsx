@@ -28,12 +28,8 @@ export async function loader(args: LoaderFunctionArgs) {
     q: z.string().optional(),
   });
 
-  if (!q) {
-    return json({ q: null, summary: null, searchResults: null });
-  }
-
-  const searchResults = await searchGoogle(q);
-  const summary = await summarizeSearchResults({ query: q, searchResults });
+  const searchResults = q ? await searchGoogle(q) : null;
+  const summary = (q && searchResults) ? await summarizeSearchResults({ query: q, searchResults }) : null;
 
   return json({
     q,
@@ -44,9 +40,13 @@ export async function loader(args: LoaderFunctionArgs) {
 
 export default function Index() {
   const { q, summary, searchResults }= useLoaderData<typeof loader>();
-  const { state } = useNavigation();
+  const { state, formData } = useNavigation();
+  const isLoading = state !== 'idle' 
+  // Extract the query parameter 'q' from the current URL
+  const inputValue = formData?.get('q')?.toString() || q;
 
-  const isLoading = state !== 'idle'
+
+
 
   return (
     <div className="mt-10 p-4 space-y-4 container lg:px-[20%] mb-20">
@@ -60,7 +60,7 @@ export default function Index() {
               key={Date.now()}
               autoComplete="off"
               id="search"
-              defaultValue={q ?? ''}
+              defaultValue={inputValue ?? ''}
               placeholder="Search the web"
               className="w-full border rounded-md p-2"
             />
