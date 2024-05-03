@@ -15,4 +15,20 @@ export class EnvVars {
     }
     return key;
   }
+
+  static qdrant(): {
+    host: string, key: string}{
+    const key = process.env.QDRANT_API_KEY;
+    const host = process.env.QDRANT_HOST;
+    if (!key ) {
+      throw new Error('Missing QDRANT_API_KEY environment variable');
+    }
+    if (!host ) {
+      throw new Error('Missing QDRANT_HOST environment variable');
+    }
+    return {
+      host,
+      key
+    };
+  }
 }

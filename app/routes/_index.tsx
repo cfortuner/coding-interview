@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { zx } from 'zodix';
 import { summarizeSearchResults } from '~/services/openai';
 import { searchGoogle } from '~/services/serpapi';
+import { searchQdrant } from '~/services/vectordb';
 import '~/styles/global.css'
 
 export const meta: MetaFunction = () => {
@@ -28,24 +29,32 @@ export async function loader(args: LoaderFunctionArgs) {
     q: z.string().optional(),
   });
 
-  const searchResults = q ? await searchGoogle(q) : null;
-  const summary = (q && searchResults) ? await summarizeSearchResults({ query: q, searchResults }) : null;
+  const googleSearchResults = q ? await searchGoogle(q) : null;
+  const qdrantSearchResults = q ? await searchQdrant(q) : null;
+
+  const summary = (q && googleSearchResults && qdrantSearchResults) ? await summarizeSearchResults({ 
+    query: q, 
+    googleSearchResults,
+    qdrantSearchResults
+  }) : null;
+
 
   return json({
     q,
     summary,
-    searchResults 
+    searchResults: googleSearchResults,
+    qdrantSearchResults
   })
 }
 
 export default function Index() {
-  const { q, summary, searchResults }= useLoaderData<typeof loader>();
-  const { state, formData } = useNavigation();
+  const { q, summary, searchResults, qdrantSearchResults }= useLoaderData<typeof loader>();
+  const { state, formData, } = useNavigation();
   const isLoading = state !== 'idle' 
   // Extract the query parameter 'q' from the current URL
   const inputValue = formData?.get('q')?.toString() || q;
 
-
+  console.log(qdrantSearchResults)
 
 
   return (
@@ -91,6 +100,25 @@ export default function Index() {
               })}
             </ul>}
           </div> 
+
+          {qdrantSearchResults || isLoading ? 
+          <div className="mt-4">
+            <div className="space-y-4">
+            <h4 className="text-lg font-bold">Qdrant Results</h4>
+            {isLoading ? <Skeleton numLines={5} height={50}/> : <ul className='flex flex-col space-y-2'>
+              {qdrantSearchResults?.map((result: any, i: number) => {
+                return (
+                  <div key={i} className="bg-gray-100 p-2 rounded-lg hover:cursor-pointer group max-w-3xl overflow-clip">
+                    <div className="flex items-center space-x-2 group-hover:text-blue-500">
+                      <div>{i + 1}.</div>
+                      <div className='whitespace-nowrap'>{result.text}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </ul>}
+          </div> 
+          </div> : null}
 
           <div className="space-y-4 pt-4">
             <h4 className="text-lg font-bold">Related Queries</h4>
